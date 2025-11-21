@@ -9,10 +9,16 @@ app.all("*", async (req, res) => {
     console.log("AUTH HEADER =", req.headers.authorization);
     console.log("RAW BODY =", req.body.toString());
     
-    // Parse JSON manually
+    // Clean and parse JSON manually (fix APIM line breaks)
     let body;
     try {
-        body = JSON.parse(req.body.toString());
+        const rawBody = req.body.toString()
+            .replace(/\n\s+/g, ' ')  // Remove line breaks with spaces
+            .replace(/\s+/g, ' ')    // Normalize multiple spaces
+            .trim();
+        
+        body = JSON.parse(rawBody);
+        console.log("PARSED BODY =", JSON.stringify(body, null, 2));
     } catch (e) {
         console.log("JSON Parse Error:", e.message);
         return res.status(400).json({ error: "Invalid JSON", raw: req.body.toString() });
