@@ -43,6 +43,7 @@ app.all("*", async (req, res) => {
             headers,
             data: req.method !== "GET" ? req.body : undefined,
             proxy: {
+                protocol: 'http', // Force HTTP proxy
                 host: 'pr.oxylabs.io',
                 port: 7777,
                 auth: {
@@ -50,6 +51,9 @@ app.all("*", async (req, res) => {
                     password: 'ELsoleil1234_'
                 }
             },
+            httpsAgent: new (await import('https')).Agent({ 
+                rejectUnauthorized: false // Ignore SSL certificate errors
+            }),
             validateStatus: () => true // Accept all status codes
         });
 
