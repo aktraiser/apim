@@ -35,10 +35,18 @@ app.all("*", async (req, res) => {
         headers["Sec-Fetch-Mode"] = "cors";
         headers["Sec-Fetch-Site"] = "same-site";
 
+        // Configuration proxy Oxylabs
+        const proxyAgent = new (await import('https-proxy-agent')).HttpsProxyAgent({
+            host: 'pr.oxylabs.io',
+            port: 7777,
+            auth: 'customer-acoustics_8n8VE-cc-US:ELsoleil1234_'
+        });
+
         const response = await fetch(targetUrl, {
             method: req.method,
             headers,
             body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
+            agent: proxyAgent
         });
 
         const data = await response.text();
