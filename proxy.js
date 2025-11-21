@@ -18,9 +18,22 @@ app.all("*", async (req, res) => {
         delete headers["content-length"];
         delete headers["accept-encoding"];
 
-        // force good host + UA
+        // force realistic browser headers
         headers["Host"] = "cloud.feedly.com";
-        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64)";
+        headers["User-Agent"] = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
+        headers["Accept"] = "application/json, text/plain, */*";
+        headers["Accept-Language"] = "en-US,en;q=0.9,fr;q=0.8";
+        headers["Accept-Encoding"] = "gzip, deflate, br";
+        headers["Cache-Control"] = "no-cache";
+        headers["Pragma"] = "no-cache";
+        headers["Origin"] = "https://feedly.com";
+        headers["Referer"] = "https://feedly.com/";
+        headers["Sec-Ch-Ua"] = '"Not_A Brand";v="8", "Chromium";v="120", "Google Chrome";v="120"';
+        headers["Sec-Ch-Ua-Mobile"] = "?0";
+        headers["Sec-Ch-Ua-Platform"] = '"Windows"';
+        headers["Sec-Fetch-Dest"] = "empty";
+        headers["Sec-Fetch-Mode"] = "cors";
+        headers["Sec-Fetch-Site"] = "same-site";
 
         const response = await fetch(targetUrl, {
             method: req.method,
