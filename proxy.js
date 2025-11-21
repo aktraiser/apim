@@ -1,5 +1,6 @@
 import express from "express";
-import axios from "axios";
+import { exec } from "child_process";
+import { promisify } from "util";
 
 const app = express();
 app.use(express.json());
@@ -36,28 +37,29 @@ app.all("*", async (req, res) => {
         headers["Sec-Fetch-Mode"] = "cors";
         headers["Sec-Fetch-Site"] = "same-site";
 
-        // Configuration proxy Oxylabs
-        const response = await axios({
-            method: req.method,
-            url: targetUrl,
-            headers,
-            data: req.method !== "GET" ? req.body : undefined,
-            proxy: {
-                protocol: 'http', // Force HTTP proxy
-                host: 'pr.oxylabs.io',
-                port: 7777,
-                auth: {
-                    username: 'customer-acoustics_8n8VE-cc-US',
-                    password: 'ELsoleil1234_'
-                }
-            },
-            httpsAgent: new (await import('https')).Agent({ 
-                rejectUnauthorized: false // Ignore SSL certificate errors
-            }),
-            validateStatus: () => true // Accept all status codes
-        });
-
-        res.status(response.status).send(response.data);
+        // Build curl command with Oxylabs proxy
+        const execAsync = promisify(exec);
+        const headerArgs = Object.entries(headers)
+            .map(([key, value]) => `-H "${key}: ${value}"`)
+            .join(' ');
+        
+        const bodyArg = req.method !== "GET" ? `-d '${JSON.stringify(req.body)}'` : '';
+        
+        const curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" ${headerArgs} ${bodyArg} "${targetUrl}" -s -i`;
+        
+        const { stdout } = await execAsync(curlCmd);
+        
+        // Parse HTTP response
+        const lines = stdout.split('\n');
+        const statusLine = lines[0];
+        const statusMatch = statusLine.match(/HTTP\/[\d\.]+ (\d+)/);
+        const status = statusMatch ? parseInt(statusMatch[1]) : 200;
+        
+        // Find body (after empty line)
+        const emptyLineIndex = lines.findIndex(line => line.trim() === '');
+        const body = lines.slice(emptyLineIndex + 1).join('\n');
+        
+        res.status(status).send(body);
     } catch (err) {
         res.status(500).send({ error: err.message });
     }
