@@ -43,9 +43,17 @@ app.all("*", async (req, res) => {
             .map(([key, value]) => `-H "${key}: ${value}"`)
             .join(' ');
         
-        const bodyArg = req.method !== "GET" ? `-d '${JSON.stringify(req.body)}'` : '';
-        
-        const curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" -H "Authorization: ${headers.authorization}" -H "Content-Type: application/json" ${bodyArg} "${targetUrl}" -s -i --compressed`;
+        let curlCmd;
+        if (req.method !== "GET") {
+            // Write body to temp file to avoid shell escaping issues
+            const bodyData = JSON.stringify(req.body);
+            const fs = await import('fs');
+            const tmpFile = '/tmp/body.json';
+            fs.writeFileSync(tmpFile, bodyData);
+            curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" -H "Authorization: ${headers.authorization}" -H "Content-Type: application/json" -d @${tmpFile} "${targetUrl}" -s -i --compressed`;
+        } else {
+            curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" -H "Authorization: ${headers.authorization}" "${targetUrl}" -s -i --compressed`;
+        }
         
         console.log("CURL Command:", curlCmd);
         
