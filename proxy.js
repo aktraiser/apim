@@ -3,8 +3,6 @@ import { exec } from "child_process";
 import { promisify } from "util";
 
 const app = express();
-app.use(express.json());
-
 app.use(express.raw({ type: 'application/json' }));
 
 app.all("*", async (req, res) => {
