@@ -10,15 +10,15 @@ app.all("*", async (req, res) => {
     console.log("RAW BODY =", req.body.toString());
     
     // Clean and parse JSON manually (fix APIM line breaks)
-    let body;
+    let parsedBody;
     try {
         const rawBody = req.body.toString()
             .replace(/\n\s+/g, ' ')  // Remove line breaks with spaces
             .replace(/\s+/g, ' ')    // Normalize multiple spaces
             .trim();
         
-        body = JSON.parse(rawBody);
-        console.log("PARSED BODY =", JSON.stringify(body, null, 2));
+        parsedBody = JSON.parse(rawBody);
+        console.log("PARSED BODY =", JSON.stringify(parsedBody, null, 2));
     } catch (e) {
         console.log("JSON Parse Error:", e.message);
         return res.status(400).json({ error: "Invalid JSON", raw: req.body.toString() });
@@ -62,7 +62,7 @@ app.all("*", async (req, res) => {
         let curlCmd;
         if (req.method !== "GET") {
             // Write body to temp file to avoid shell escaping issues
-            const bodyData = JSON.stringify(body);
+            const bodyData = JSON.stringify(parsedBody);
             const fs = await import('fs');
             const tmpFile = '/tmp/body.json';
             fs.writeFileSync(tmpFile, bodyData);
