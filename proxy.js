@@ -5,8 +5,20 @@ import { promisify } from "util";
 const app = express();
 app.use(express.json());
 
+app.use(express.raw({ type: 'application/json' }));
+
 app.all("*", async (req, res) => {
     console.log("AUTH HEADER =", req.headers.authorization);
+    console.log("RAW BODY =", req.body.toString());
+    
+    // Parse JSON manually
+    let body;
+    try {
+        body = JSON.parse(req.body.toString());
+    } catch (e) {
+        console.log("JSON Parse Error:", e.message);
+        return res.status(400).json({ error: "Invalid JSON", raw: req.body.toString() });
+    }
 
     try {
         const targetUrl = "https://cloud.feedly.com" + req.originalUrl;
@@ -46,7 +58,7 @@ app.all("*", async (req, res) => {
         let curlCmd;
         if (req.method !== "GET") {
             // Write body to temp file to avoid shell escaping issues
-            const bodyData = JSON.stringify(req.body);
+            const bodyData = JSON.stringify(body);
             const fs = await import('fs');
             const tmpFile = '/tmp/body.json';
             fs.writeFileSync(tmpFile, bodyData);
