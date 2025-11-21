@@ -1,4 +1,5 @@
 import express from "express";
+import axios from "axios";
 
 const app = express();
 app.use(express.json());
@@ -36,21 +37,23 @@ app.all("*", async (req, res) => {
         headers["Sec-Fetch-Site"] = "same-site";
 
         // Configuration proxy Oxylabs
-        const proxyAgent = new (await import('https-proxy-agent')).HttpsProxyAgent({
-            host: 'pr.oxylabs.io',
-            port: 7777,
-            auth: 'customer-acoustics_8n8VE-cc-US:ELsoleil1234_'
-        });
-
-        const response = await fetch(targetUrl, {
+        const response = await axios({
             method: req.method,
+            url: targetUrl,
             headers,
-            body: req.method !== "GET" ? JSON.stringify(req.body) : undefined,
-            agent: proxyAgent
+            data: req.method !== "GET" ? req.body : undefined,
+            proxy: {
+                host: 'pr.oxylabs.io',
+                port: 7777,
+                auth: {
+                    username: 'customer-acoustics_8n8VE-cc-US',
+                    password: 'ELsoleil1234_'
+                }
+            },
+            validateStatus: () => true // Accept all status codes
         });
 
-        const data = await response.text();
-        res.status(response.status).send(data);
+        res.status(response.status).send(response.data);
     } catch (err) {
         res.status(500).send({ error: err.message });
     }
