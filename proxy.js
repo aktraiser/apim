@@ -45,9 +45,14 @@ app.all("*", async (req, res) => {
         
         const bodyArg = req.method !== "GET" ? `-d '${JSON.stringify(req.body)}'` : '';
         
-        const curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" ${headerArgs} ${bodyArg} "${targetUrl}" -s -i --compressed`;
+        const curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" -H "Authorization: ${headers.authorization}" -H "Content-Type: application/json" ${bodyArg} "${targetUrl}" -s -i --compressed`;
         
-        const { stdout } = await execAsync(curlCmd);
+        console.log("CURL Command:", curlCmd);
+        
+        const { stdout, stderr } = await execAsync(curlCmd);
+        
+        console.log("CURL stdout:", stdout.substring(0, 500));
+        if (stderr) console.log("CURL stderr:", stderr);
         
         // Parse HTTP response
         const lines = stdout.split('\n');
