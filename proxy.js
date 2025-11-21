@@ -54,15 +54,23 @@ app.all("*", async (req, res) => {
         console.log("CURL stdout:", stdout.substring(0, 500));
         if (stderr) console.log("CURL stderr:", stderr);
         
-        // Parse HTTP response
+        // Parse HTTP response - take the LAST HTTP response (skip proxy response)
         const lines = stdout.split('\n');
-        const statusLine = lines[0];
-        const statusMatch = statusLine.match(/HTTP\/[\d\.]+ (\d+)/);
+        
+        // Find all HTTP status lines
+        const httpStatusLines = lines.map((line, index) => ({ line, index }))
+            .filter(({ line }) => line.match(/HTTP\/[\d\.]+\s+\d+/));
+        
+        // Take the last HTTP status (the real response from Feedly)
+        const lastHttpStatus = httpStatusLines[httpStatusLines.length - 1];
+        const statusMatch = lastHttpStatus.line.match(/HTTP\/[\d\.]+ (\d+)/);
         const status = statusMatch ? parseInt(statusMatch[1]) : 200;
         
-        // Find body (after empty line)
-        const emptyLineIndex = lines.findIndex(line => line.trim() === '');
-        const body = lines.slice(emptyLineIndex + 1).join('\n');
+        // Find body after the last HTTP response headers
+        const startFromLine = lastHttpStatus.index;
+        const remainingLines = lines.slice(startFromLine);
+        const emptyLineIndex = remainingLines.findIndex(line => line.trim() === '');
+        const body = remainingLines.slice(emptyLineIndex + 1).join('\n');
         
         res.status(status).send(body);
     } catch (err) {
