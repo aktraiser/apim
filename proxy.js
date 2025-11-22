@@ -8,26 +8,30 @@ app.use(express.raw({ type: 'application/json' }));
 app.all("*", async (req, res) => {
     console.log("AUTH HEADER =", req.headers.authorization);
     console.log("RAW BODY =", req.body.toString());
-    
-    // Clean and parse JSON manually (fix APIM line breaks)
+
+    // Handle JSON body only for POST/PUT/PATCH requests
     let parsedBody;
-    try {
-        const rawBody = req.body.toString()
-            .replace(/\n\s+/g, ' ')  // Remove line breaks with spaces
-            .replace(/\s+/g, ' ')    // Normalize multiple spaces
-            .trim();
-        
-        parsedBody = JSON.parse(rawBody);
-        console.log("PARSED BODY =", JSON.stringify(parsedBody, null, 2));
-    } catch (e) {
-        console.log("JSON Parse Error:", e.message);
-        return res.status(400).json({ error: "Invalid JSON", raw: req.body.toString() });
+    if (req.method !== "GET" && req.body && req.body.length > 0) {
+        try {
+            const rawBody = req.body.toString()
+                .replace(/\n\s+/g, ' ')  // Remove line breaks with spaces
+                .replace(/\s+/g, ' ')    // Normalize multiple spaces
+                .trim();
+
+            parsedBody = JSON.parse(rawBody);
+            console.log("PARSED BODY =", JSON.stringify(parsedBody, null, 2));
+        } catch (e) {
+            console.log("JSON Parse Error:", e.message);
+            return res.status(400).json({ error: "Invalid JSON", raw: req.body.toString() });
+        }
+    } else {
+        console.log("GET Request - No body parsing needed");
     }
 
     try {
         const targetUrl = "https://cloud.feedly.com" + req.originalUrl;
 
-        // ✅ clone + clean headers
+        //  clone + clean headers
         const headers = { ...req.headers };
 
         // remove hop-by-hop / bad headers
@@ -58,7 +62,7 @@ app.all("*", async (req, res) => {
         const headerArgs = Object.entries(headers)
             .map(([key, value]) => `-H "${key}: ${value}"`)
             .join(' ');
-        
+
         let curlCmd;
         if (req.method !== "GET") {
             // Write body to temp file to avoid shell escaping issues
@@ -70,32 +74,32 @@ app.all("*", async (req, res) => {
         } else {
             curlCmd = `curl -x pr.oxylabs.io:7777 -U "customer-acoustics_8n8VE-cc-US:ELsoleil1234_" -H "Authorization: ${headers.authorization}" "${targetUrl}" -s -i --compressed`;
         }
-        
+
         console.log("CURL Command:", curlCmd);
-        
+
         const { stdout, stderr } = await execAsync(curlCmd);
-        
+
         console.log("CURL stdout:", stdout.substring(0, 500));
         if (stderr) console.log("CURL stderr:", stderr);
-        
+
         // Parse HTTP response - take the LAST HTTP response (skip proxy response)
         const lines = stdout.split('\n');
-        
+
         // Find all HTTP status lines
         const httpStatusLines = lines.map((line, index) => ({ line, index }))
             .filter(({ line }) => line.match(/HTTP\/[\d\.]+\s+\d+/));
-        
+
         // Take the last HTTP status (the real response from Feedly)
         const lastHttpStatus = httpStatusLines[httpStatusLines.length - 1];
         const statusMatch = lastHttpStatus.line.match(/HTTP\/[\d\.]+ (\d+)/);
         const status = statusMatch ? parseInt(statusMatch[1]) : 200;
-        
+
         // Find body after the last HTTP response headers
         const startFromLine = lastHttpStatus.index;
         const remainingLines = lines.slice(startFromLine);
         const emptyLineIndex = remainingLines.findIndex(line => line.trim() === '');
         const body = remainingLines.slice(emptyLineIndex + 1).join('\n');
-        
+
         res.status(status).send(body);
     } catch (err) {
         res.status(500).send({ error: err.message });
